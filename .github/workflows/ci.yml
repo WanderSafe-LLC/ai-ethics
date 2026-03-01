@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install dependencies
+      run: |
+        npm install -g markdownlint-cli
+        npm install -g yaml-lint
+
+    - name: Lint Markdown
+      run: markdownlint '**/*.md' --ignore node_modules
+
+    - name: Lint YAML
+      run: yamllint **/*.yml **/*.yaml --ignore=node_modules
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run shell scripts check
+      run: |
+        find scripts -name "*.sh" -exec bash -n {} \;
+
+    - name: Check for syntax errors in YAML
+      run: |
+        python3 -c "import yaml; [yaml.safe_load(open(f)) for f in ['ethics-checklist.yml']]" || exit 1

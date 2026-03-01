@@ -1,0 +1,8 @@
+# AI Ethics Enforcement Toolkit - Python Dependencies
+#
+# Core enforcement library requirements
+# Author: Victor J. Quiñones (FutureTranz)
+# License: MIT
+
+# No external dependencies required for core functionality
+# All imports are from Python standard library

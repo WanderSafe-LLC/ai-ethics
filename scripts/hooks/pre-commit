@@ -1,0 +1,74 @@
+#!/bin/bash
+# AI Ethics Pre-commit Hook
+# Prevents commits with AI attribution violations
+# Author: Victor J. Quiñones (FutureTranz)
+
+set -e
+
+# Get the repository root
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+SCRIPT_DIR="$REPO_ROOT/scripts"
+ENFORCER="$REPO_ROOT/src/ai_ethics_enforcer.py"
+
+# Check if Python enforcer exists
+if [ ! -f "$ENFORCER" ]; then
+    echo "AI Ethics enforcer not found. Please run install script first."
+    exit 1
+fi
+
+# Activate virtual environment if it exists
+if [ -f "$REPO_ROOT/venv/bin/activate" ]; then
+    source "$REPO_ROOT/venv/bin/activate"
+fi
+
+echo "🔍 Running AI Ethics pre-commit check..."
+
+# Files allowed to include policy-enforcement keyword examples.
+EXCLUDED_PATHS=(
+    "AI_ATTRIBUTION_POLICY.md"
+    "docs/policies/AI_ATTRIBUTION_POLICY.md"
+    "src/ai_ethics_enforcer.py"
+    "scripts/hooks/pre-commit"
+    "scripts/hooks/commit-msg"
+    "scripts/ci-check-attribution.sh"
+)
+
+# Check whether a file should be excluded from attribution scanning.
+is_excluded_file() {
+    local candidate="$1"
+
+    for excluded in "${EXCLUDED_PATHS[@]}"; do
+        if [ "$candidate" = "$excluded" ]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Check staged files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -n "$STAGED_FILES" ]; then
+    echo "Checking staged files for AI attribution violations..."
+
+    # Check each staged file
+    for file in $STAGED_FILES; do
+        if [ -f "$file" ]; then
+            if is_excluded_file "$file"; then
+                echo "Skipping policy/enforcer file: $file"
+                continue
+            fi
+
+            echo "Checking $file..."
+            if ! python3 "$ENFORCER" --type file "$file" >/dev/null 2>&1; then
+                echo "❌ AI Ethics violation found in $file"
+                echo "💡 Fix the violation before committing"
+                exit 1
+            fi
+        fi
+    done
+fi
+
+echo "✅ AI Ethics check passed!"
+exit 0
